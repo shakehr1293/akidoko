@@ -1,12 +1,20 @@
+# =====================================================================
+# 出入口カメラのテストコード（真上・見下ろし設置カメラ用）
+# 
+# 【特徴】
+# ・人が画面を上下に移動する動き（Y座標）で「入店 / 退店」を判定
+# ・上側の線（200）と下側の線（500）を通過する順序でカウント
+# =====================================================================
+
 import cv2
 from ultralytics import YOLO
 
 model = YOLO('yolov5su.pt')
 cap = cv2.VideoCapture(0) 
 
-# 💡 線の位置の数値はそのまま維持
-LINE_OUTSIDE = 200  # 上側の線（青）
-LINE_INSIDE  = 500  # 下側の線（赤）
+# 線の位置の数値（Y座標）
+LINE_OUTSIDE = 200  # 上側の線（青）: 外側
+LINE_INSIDE  = 300  # 下側の線（赤）: 店内側
 
 # 各人のステータスを記憶する辞書
 people_status = {}
@@ -19,10 +27,10 @@ while cap.isOpened():
     if not ret:
         break
 
+    # 【注意】接続するカメラの解像度が1800x1080未満の場合はここをコメントアウトしてください
+    # frame = frame[0:1080, 0:1800]
 
-    frame = frame[0:1080, 0:1800]
-
-    # トリミングした後のフレームに対して人だけを追跡
+    # 人だけを追跡
     results = model.track(frame, persist=True, classes=[0], verbose=False)
 
     if results[0].boxes.id is not None:
@@ -45,7 +53,6 @@ while cap.isOpened():
                 enter_count += 1
                 people_status[obj_id] = "counted"
 
-
             # --- 🏃‍♂️ ② 下から上への「退店」ルート (店内[赤] -> 外[青]) ---
             if people_status[obj_id] == "none" and LINE_OUTSIDE < current_y < LINE_INSIDE:
                 if current_y > (LINE_INSIDE - 50):
@@ -55,8 +62,7 @@ while cap.isOpened():
                 exit_count += 1
                 people_status[obj_id] = "counted"
 
-
-            # 💡 安全装置：画面の上下ギリギリに消え去ったらステータスをリセット
+            # 安全装置：画面の上下ギリギリに消え去ったらステータスをリセット
             if current_y < 40 or current_y > (frame.shape[0] - 40):
                 people_status[obj_id] = "none"
 
