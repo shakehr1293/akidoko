@@ -7,16 +7,18 @@
 
 import cv2
 from ultralytics import YOLO
+import time
 
 model = YOLO('yolov5su.pt')
 cap = cv2.VideoCapture(0) # 撮影した動画のパス
 
-LINE_INSIDE  = 300  # 左側の線（赤）
-LINE_OUTSIDE = 400  # 右側の線（青）
+LINE_INSIDE  = 100  # 左側の線（赤）
+LINE_OUTSIDE = 500  # 右側の線（青）
 
 # 各人のステータスを記憶する辞書
 people_status = {}
-
+interval = 60
+last_print_time = time.time()
 enter_count = 0
 exit_count = 0
 
@@ -95,6 +97,14 @@ while cap.isOpened():
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
 
     cv2.imshow("Shop Population Counter", frame)
+    current_time = time.time()
+    if (current_time - last_print_time) >= interval  :
+        print(f"現在の店内人数: {current_inside_shop}")
+
+        last_print_time = current_time
+
+
+    
     if cv2.waitKey(1) == ord('q'):
         break
 
