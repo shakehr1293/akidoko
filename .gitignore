@@ -217,4 +217,9 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
+# YOLOモデル
 *.pt
+
+# データベース関係
+.db
+.sql
