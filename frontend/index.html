@@ -3,12 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>状況表示</title>
+    <title>†Black Knight† 飲食店混雑把握システム</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-    <h1>Hello, World!</h1>
+    <header>
+        <h1>店内の混雑状況</h1>
+        <p class="shop-name">店舗名：†Black Knight† カフェ</p>
+    </header>
+
+    <main>
+        <div class="card total-card">
+            <h2>全体のおおよその残席数</h2>
+            <p class="seat-number"><span id="total-seats">--</span> 席</p>
+            <p class="update-time">（1分ごとに更新）</p>
+        </div>
+
+        <div class="seats-container">
+            <div class="card">
+                <h3>カウンター席</h3>
+                <p class="seat-number"><span id="counter-seats">--</span> /9席空き</p>
+                <p class="update-time">（5分ごとに更新）</p>
+            </div>
+
+            <div class="card">
+                <h3>テーブル席</h3>
+                <p class="seat-number"><span id="table-seats">--</span> /5卓空き</p>
+                <p class="update-time">（5分ごとに更新）</p>
+            </div>
+        </div>
+    </main>
 
     <script src="js/main.js"></script>
 </body>

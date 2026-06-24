@@ -1,1 +1,85 @@
 
+/* 全体の背景や文字の基本設定 */
+body {
+    background-color: #f5f6fa;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    color: #2f3542;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+h1 {
+    margin-bottom: 5px;
+    color: #1e272e;
+}
+
+.shop-name {
+    font-weight: bold;
+    color: #747d8c;
+}
+
+/* 数字を表示するカードのデザイン */
+.card {
+    background-color: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin: 10px;
+    text-align: center;
+    width: 280px;
+}
+
+/* 全体の残席数を表示するカード（少し大きく目立たせる） */
+.total-card {
+    width: 600px;
+    max-width: 90%;
+    background: linear-gradient(135deg, #111111 0%, #2f3542 100%);
+    color: #ffffff;
+}
+
+.total-card h2 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: #ced6e0;
+}
+
+/* カウンター席とテーブル席を横並びにするための箱 */
+.seats-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+/* 空き席数の数字をドカンと大きく表示 */
+.seat-number {
+    font-size: 3rem;
+    font-weight: bold;
+    margin: 15px 0;
+}
+
+.total-card .seat-number {
+    color: #2ed573; /* 残席数は見やすい緑色に */
+}
+
+/* 更新頻度の文字を小さく表示 */
+.update-time {
+    font-size: 0.8rem;
+    color: #a4b0be;
+    margin: 0;
+}
+
+/* カウンター席とテーブル席の「空き○/○」の文字の大きさを調整 */
+.seat-number-sub {
+    font-size: 1.8rem;
+    font-weight: bold;
+    margin: 15px 0;
+    color: #2f3542; /* 文字の色を少し落ち着いた黒に */
+}
