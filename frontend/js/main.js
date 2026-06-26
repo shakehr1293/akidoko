@@ -1,7 +1,6 @@
 // サーバ接続時堪忍事項
 // ・URLとポート番号が正しいか
 // ・変数名がサーバ側と一致しているか
-// ・
 
 
 const API_URL = 'http://localhost:3000/api/status'; // 仮のサーバURL
@@ -54,5 +53,8 @@ async function updateSeatStatus() {
     }
 }
 
-// ページ読み込み時に実行
-window.onload = updateSeatStatus;
+// サーバ側で情報が更新されたあと、1分ごとに更新する
+window.onload = () => {
+    updateSeatStatus();
+    setInterval(updateSeatStatus, 60000); 
+};
