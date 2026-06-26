@@ -83,3 +83,11 @@ h1 {
     margin: 15px 0;
     color: #2f3542; /* 文字の色を少し落ち着いた黒に */
 }
+
+.freshress {
+    font-size: 1.0rem;
+    font-weight: bold;
+    color: #747d8c;
+    margin-top: 20px;
+    text-align: center;
+}
