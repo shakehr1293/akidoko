@@ -6,7 +6,7 @@ app = Flask(__name__)
  
 # データベースのパス
 BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "database" / "restaurant.db"
+DB_PATH = BASE_DIR.parent / "database" / "restaurant.db"
  
  
 # DB接続
@@ -25,7 +25,7 @@ def home():
  
  
 # 客数を受信して保存
-@app.route("/count", methods=["POST"])
+@app.route("/api/count", methods=["POST"])
 def save_count():
  
     data = request.get_json()
@@ -80,7 +80,7 @@ def save_count():
  
  
 # 最新情報取得
-@app.route("/status/<int:store_id>", methods=["GET"])
+@app.route("/api/status/<int:store_id>", methods=["GET"])
 def status(store_id):
  
     conn = get_connection()
