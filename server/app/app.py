@@ -3,7 +3,8 @@ import sqlite3
 from pathlib import Path
  
 app = Flask(__name__)
- 
+app.json.ensure_ascii = False
+
 # データベースのパス
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR.parent / "database" / "restaurant.db"
