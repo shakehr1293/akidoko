@@ -26,6 +26,15 @@ h1 {
     color: #747d8c;
 }
 
+#freshness {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.65rem;
+    font-weight: bold;
+    background-color: #f0f0f0; /* 初期状態の背景色（薄いグレー） */
+}
+
 /* 数字を表示するカードのデザイン */
 .card {
     background-color: #ffffff;
@@ -84,7 +93,7 @@ h1 {
     color: #2f3542; /* 文字の色を少し落ち着いた黒に */
 }
 
-.freshress {
+.freshness {
     font-size: 1.0rem;
     font-weight: bold;
     color: #747d8c;
