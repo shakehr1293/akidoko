@@ -28,23 +28,21 @@ def home():
 # 客数を受信して保存
 @app.route("/api/count", methods=["POST"])
 def save_count():
- 
+
     data = request.get_json()
- 
-    # JSONチェック
+
     if not data:
         return jsonify({"error": "JSONデータがありません"}), 400
- 
+
     if "store_id" not in data or "guest_count" not in data:
         return jsonify({"error": "store_id と guest_count が必要です"}), 400
- 
+
     store_id = data["store_id"]
     guest_count = data["guest_count"]
- 
+
     conn = get_connection()
     cursor = conn.cursor()
- 
-    # 客数ログ保存
+
     cursor.execute("""
         INSERT INTO count_log (
             store_id,
@@ -52,41 +50,40 @@ def save_count():
         )
         VALUES (?, ?)
     """, (store_id, guest_count))
- 
+
     conn.commit()
- 
-    # 最新の店舗情報取得
+
     cursor.execute("""
-        SELECT
-            total_seats
+        SELECT total_seats
         FROM store
         WHERE store_id = ?
     """, (store_id,))
- 
-    store = cursor.fetchone()
- 
+
+    store_info = cursor.fetchone()
+
     conn.close()
- 
-    if store is None:
+
+    if store_info is None:
         return jsonify({"error": "店舗が存在しません"}), 404
- 
-    available = store["total_seats"] - guest_count
- 
+
+    remaining_seats = store_info["total_seats"] - guest_count
+
     return jsonify({
         "message": "保存しました",
         "store_id": store_id,
-        "guest_count": guest_count,
-        "available_seats": available
+        "remaining_seats": remaining_seats
     })
  
  
 # 最新情報取得
-@app.route("/api/status/<int:store_id>", methods=["GET"])
-def status(store_id):
- 
+@app.route("/api/status", methods=["GET"])
+def status():
+
+    store_id = request.args.get("store_id", default=1, type=int)
+
     conn = get_connection()
     cursor = conn.cursor()
- 
+
     cursor.execute("""
         SELECT
             s.store_name,
@@ -100,22 +97,30 @@ def status(store_id):
         ORDER BY c.recorded_at DESC
         LIMIT 1
     """, (store_id,))
- 
-    row = cursor.fetchone()
- 
+
+    status_info = cursor.fetchone()
+
     conn.close()
- 
-    if row is None:
+
+    if status_info is None:
         return jsonify({"error": "店舗が存在しません"}), 404
- 
-    guest_count = row["guest_count"] if row["guest_count"] is not None else 0
- 
+
+    guest_count = (
+        status_info["guest_count"]
+        if status_info["guest_count"] is not None
+        else 0
+    )
+
+    remaining_seats = status_info["total_seats"] - guest_count
+
+    updated_at = status_info["recorded_at"]
+
     return jsonify({
-        "store_name": row["store_name"],
-        "total_seats": row["total_seats"],
-        "guest_count": guest_count,
-        "available_seats": row["total_seats"] - guest_count,
-        "recorded_at": row["recorded_at"]
+        "store_id": store_id,
+        "store_name": status_info["store_name"],
+        "remaining_seats": remaining_seats,
+        "updated_at": updated_at,
+        "is_stale": False
     })
  
  
