@@ -34,7 +34,7 @@ NEAR_MARGIN   = 40      # 「どちらの線の近くから入ってきたか」
 EDGE_MARGIN   = 40      # 画面端でステータスをリセットする余裕幅
 
 # サーバ送信先（別担当のサーバ /api/count 実装後に URL を設定）
-SERVER_URL = "http://127.0.0.1:8000/api/count"
+SERVER_URL = "http://10.77.98.239:5000/api/count"
 STORE_ID   = 1
 
 # カメラ切断時の再接続設定
