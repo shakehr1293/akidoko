@@ -89,14 +89,13 @@ def status():
     cursor.execute("""
         SELECT
             s.store_name,
-            s.total_seats,
-            c.guest_count,
-            c.recorded_at
+            sl.remaining_seats,
+            sl.recorded_at
         FROM store s
-        LEFT JOIN count_log c
-            ON s.store_id = c.store_id
+        LEFT JOIN seat_log sl
+            ON s.store_id = sl.store_id
         WHERE s.store_id = ?
-        ORDER BY c.recorded_at DESC
+        ORDER BY sl.recorded_at DESC
         LIMIT 1
     """, (store_id,))
 
@@ -107,22 +106,71 @@ def status():
     if status_info is None:
         return jsonify({"error": "店舗が存在しません"}), 404
 
-    guest_count = (
-        status_info["guest_count"]
-        if status_info["guest_count"] is not None
-        else 0
-    )
-
-    remaining_seats = status_info["total_seats"] - guest_count
-
-    updated_at = status_info["recorded_at"]
+    if status_info["remaining_seats"] is None:
+        remaining_seats = 0
+        updated_at = None
+        is_stale = True
+    else:
+        remaining_seats = status_info["remaining_seats"]
+        updated_at = status_info["recorded_at"]
+        is_stale = False
 
     return jsonify({
         "store_id": store_id,
         "store_name": status_info["store_name"],
         "remaining_seats": remaining_seats,
         "updated_at": updated_at,
-        "is_stale": False
+        "is_stale": is_stale
+    })
+
+#　カメラ2
+@app.route("/api/seats", methods=["POST"])
+def save_seats():
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "JSONデータがありません"}), 400
+
+    if "store_id" not in data or "seats" not in data:
+        return jsonify({
+            "error": "store_id と seats が必要です"
+        }), 400
+
+    store_id = data["store_id"]
+    seats = data["seats"]
+
+    # 使用中の席数
+    occupied_count = sum(
+        1 for seat in seats
+        if seat.get("occupied", False)
+    )
+
+    # 空席数
+    remaining_seats = len(seats) - occupied_count
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO seat_log
+        (
+            store_id,
+            remaining_seats
+        )
+        VALUES (?, ?)
+    """, (
+        store_id,
+        remaining_seats
+    ))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        "message": "席情報を保存しました",
+        "store_id": store_id,
+        "remaining_seats": remaining_seats
     })
  
  

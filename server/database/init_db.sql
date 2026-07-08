@@ -57,7 +57,6 @@ CREATE TABLE IF NOT EXISTS count_log (
         ON UPDATE CASCADE
 
 );
- 
 -- ==========================================
 
 -- 検索高速化インデックス
@@ -67,6 +66,45 @@ CREATE TABLE IF NOT EXISTS count_log (
 CREATE INDEX IF NOT EXISTS idx_count_log_store_time
 
 ON count_log (
+
+    store_id,
+
+    recorded_at DESC
+
+);
+-- ==========================================
+-- 席情報ログテーブル
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS seat_log (
+
+    -- ログID
+    log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    -- 店舗ID
+    store_id INTEGER NOT NULL,
+
+    -- 残席数
+    remaining_seats INTEGER NOT NULL,
+
+    -- 記録時刻
+    recorded_at DATETIME NOT NULL
+        DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (store_id)
+        REFERENCES store(store_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+
+);
+
+-- ==========================================
+-- 検索高速化インデックス
+-- ==========================================
+
+CREATE INDEX IF NOT EXISTS idx_seat_log_store_time
+
+ON seat_log (
 
     store_id,
 
