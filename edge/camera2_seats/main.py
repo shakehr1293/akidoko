@@ -20,7 +20,8 @@ import threading
 import requests
 import json
 import time
-from collections import deque
+import os
+from collections import deque, Counter
 
 # ===== 設定 =====
 MODEL_PATH    = 'yolo26n.pt'    # YOLO モデル（初回実行時に自動ダウンロード）
@@ -31,13 +32,17 @@ CONF          = 0.5           # person 検出の信頼度しきい値
 VOTE_WINDOW   = 5             # 直近何フレーム分の判定を多数決に使うか
 
 # サーバ送信設定（別担当のサーバ /api/seats 実装後に URL を設定）
-SERVER_URL    = "http://10.77.98.239:5000/api/seats"
+SERVER_URL    = "http://10.77.99.164:3000/api/seats"
 STORE_ID      = 1
 POST_INTERVAL = 60           # 変化が無くても最低この秒数ごとに送る（鮮度維持。設計上は席状況15分で stale）
+STABLE_DELAY  = 5            # 状態がこの秒数だけ変化しなかったら「確定」と見なして送信する（デバウンス）
 
 # カメラ切断時の再接続設定
 RECONNECT_WAIT    = 3         # 再接続を試みるまでの待機秒数
 MAX_READ_FAILURES = 30        # 連続で読み取り失敗したら「切断」と見なすフレーム数
+
+# ROI 設定ファイル（store_id ごとに保存し、次回以降は再選択せず読み込む）
+CONFIG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "roi_config")
 
 
 # ===== サーバ送信 =====
@@ -81,6 +86,45 @@ def connect_camera(source):
         time.sleep(RECONNECT_WAIT)
 
 
+# ===== ROI 設定ファイルの読み書き =====
+def roi_config_path(store_id):
+    """store_id に対応する ROI 設定ファイルのパスを返す。"""
+    return os.path.join(CONFIG_DIR, f"roi_store{store_id}.json")
+
+
+def load_rois(store_id):
+    """保存済みの ROI を読み込む。無ければ None を返す。
+    返り値は [(x, y, w, h), ...] のリスト（全て int）。"""
+    path = roi_config_path(store_id)
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        rois = [tuple(int(v) for v in roi) for roi in data["rois"]]
+        if len(rois) == 0:
+            return None
+        print(f"[ROI] 設定ファイルを読み込みました（{len(rois)}席）: {path}")
+        return rois
+    except Exception as e:
+        print(f"[ROI] 設定ファイルの読み込みに失敗しました（選択し直します）: {e}")
+        return None
+
+
+def save_rois(store_id, rois):
+    """選択した ROI を store_id ごとの設定ファイルに保存する。"""
+    path = roi_config_path(store_id)
+    try:
+        os.makedirs(CONFIG_DIR, exist_ok=True)
+        data = {"store_id": store_id,
+                "rois": [[int(x), int(y), int(w), int(h)] for (x, y, w, h) in rois]}
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        print(f"[ROI] 設定ファイルを保存しました（{len(rois)}席）: {path}")
+    except Exception as e:
+        print(f"[ROI] 設定ファイルの保存に失敗しました: {e}")
+
+
 def select_rois(cap):
     """最初のフレームで席の ROI を複数選択して返す。
     ドラッグで範囲確定→Enter/Space、全部終わったら Esc。"""
@@ -94,15 +138,28 @@ def select_rois(cap):
     return rois   # shape (N, 4) の numpy 配列 (x, y, w, h)
 
 
+def get_rois(cap, store_id):
+    """ROI を用意する。設定ファイルがあれば読み込み、無ければ選択して保存する。
+    これにより範囲設定は store_id ごとに初回のみで済む。"""
+    rois = load_rois(store_id)
+    if rois is not None:
+        return rois
+    rois = select_rois(cap)
+    save_rois(store_id, rois)
+    return rois
+
+
 def main():
     model = YOLO(MODEL_PATH)
     cap = connect_camera(CAMERA_SOURCE)
-    rois = select_rois(cap)
+    rois = get_rois(cap, STORE_ID)
 
-    # 席ごとに直近 VOTE_WINDOW フレーム分の生判定（True=人あり）を保持する
+    # 席ごとに直近 VOTE_WINDOW フレーム分の生の検出人数を保持する
     history = [deque(maxlen=VOTE_WINDOW) for _ in rois]
-    last_sent = None          # 直近でサーバへ送った確定状況（[bool, ...]）。変化検出用
+    last_sent = None          # 直近でサーバへ送った確定状況。変化検出用
     last_sent_time = 0.0      # 直近で送信した時刻（鮮度維持のための定期送信用）
+    prev_confirmed = None     # 前フレームの確定状況（変化検知＝デバウンス用）
+    last_change_time = 0.0    # 状態が最後に変化した時刻（この時刻から STABLE_DELAY 秒静止で送信）
 
     read_failures = 0         # 連続読み取り失敗数（切断検知用）
     running = True            # q キーで終了するためのフラグ
@@ -129,29 +186,41 @@ def main():
 
         # --- フレーム処理（1フレームの例外で全体を止めない）---
         try:
-            confirmed = []   # 席ごとの確定状況（True=使用中）
+            confirmed = []   # 席ごとの確定状況 (occupied, count) のリスト
             for i, (x, y, w, h) in enumerate(rois):
                 roi = frame[y:y + h, x:x + w]
                 results = model(roi, classes=[0], conf=CONF, verbose=False)
-                present = len(results[0].boxes) > 0
+                count_now = len(results[0].boxes)   # このフレームで ROI 内に映った人数
 
-                # 直近フレームの多数決で「使用中/空席」を確定する
-                history[i].append(present)
-                occupied = sum(history[i]) * 2 > len(history[i])
-                confirmed.append(occupied)
+                # 直近フレームの最頻値で人数を確定し、瞬間的な誤検出を抑える
+                history[i].append(count_now)
+                count = Counter(history[i]).most_common(1)[0][0]
+                occupied = count > 0
+                confirmed.append((occupied, count))
 
                 color = (0, 0, 255) if occupied else (0, 255, 0)
                 cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
-                cv2.putText(frame, f"{i}:{'USED' if occupied else 'EMPTY'}",
+                label = f"{i}:{'USED' if occupied else 'EMPTY'}({count})"
+                cv2.putText(frame, label,
                             (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
 
-            # 状態が変化したとき、または一定時間ごとにサーバへ送信する
+            # 使用中/空席（occupied）が変化したらタイマーをリセットし、STABLE_DELAY 秒
+            # 静止したら送信する。人数(seat_count)の増減ではタイマーをリセットしない。
+            # これにより人の出入りの途中では送らず、落ち着いた状態だけを送る（デバウンス）。
+            occ_state = [occ for (occ, _) in confirmed]
             now = time.time()
-            if confirmed != last_sent or (now - last_sent_time) >= POST_INTERVAL:
-                seats = [{"seat_id": i, "occupied": bool(occ)}
-                         for i, occ in enumerate(confirmed)]
+            if occ_state != prev_confirmed:
+                last_change_time = now
+                prev_confirmed = occ_state
+
+            stable_enough = (now - last_change_time) >= STABLE_DELAY
+            changed_since_sent = occ_state != last_sent
+            interval_elapsed = (now - last_sent_time) >= POST_INTERVAL
+            if stable_enough and (changed_since_sent or interval_elapsed):
+                seats = [{"seat_id": i, "occupied": bool(occ), "seat_count": int(cnt)}
+                         for i, (occ, cnt) in enumerate(confirmed)]
                 threading.Thread(target=send_seats, args=(seats,), daemon=True).start()
-                last_sent = confirmed
+                last_sent = occ_state
                 last_sent_time = now
 
             cv2.imshow("Camera2 - Seat Occupancy", frame)
