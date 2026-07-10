@@ -85,18 +85,38 @@ h1 {
     margin: 0;
 }
 
-/* カウンター席とテーブル席の「空き○/○」の文字の大きさを調整 */
-.seat-number-sub {
-    font-size: 1.8rem;
-    font-weight: bold;
-    margin: 15px 0;
-    color: #2f3542; /* 文字の色を少し落ち着いた黒に */
-}
-
 .freshness {
     font-size: 1.0rem;
     font-weight: bold;
     color: #747d8c;
     margin-top: 20px;
     text-align: center;
+}
+
+.seat-status {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+}
+
+.vacant-num {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #2e7d32; /* 空席を連想する緑系 */
+}
+
+.unit {
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.total-text {
+  font-size: 0.9rem;
+  color: #888;
+  margin-left: 6px;
+}
+
+.total-num {
+  font-weight: 600;
 }

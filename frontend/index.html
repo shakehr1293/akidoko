@@ -26,14 +26,21 @@
         <div class="seats-container">
             <div class="card">
                 <h3>カウンター席</h3>
-                <p class="seat-number"><span id="counter-status">--</span></p>
+                <div id="coounter-status" class="seat-status">
+                    <span class="vacant-num">--</span>
+                    <span class="unit">  席</span>
+                    <span class="total-text">/ 全 <span class="total-num">--</span> 席中</span>
+                </div>
                 <p class="update-time">最終更新時間：<span id="counter-updated-at">--</span></p>
-
             </div>
 
             <div class="card">
                 <h3>テーブル席</h3>
-                <p class="seat-number"><span id="table-status">--</span></p>
+                <div id="table-status" class="seat-status">
+                    <span class="vacant-num">--</span>
+                    <span class="unit">  席</span>
+                    <span class="total-text">/ 全 <span class="total-num">--</span> 席中</span>
+                </div>
                 <p class="update-time">最終更新時間：<span id="table-updated-at">--</span></p>
             </div>
         </div>
