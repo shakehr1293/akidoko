@@ -97,6 +97,36 @@ CREATE TABLE IF NOT EXISTS seat_log (
         ON UPDATE CASCADE
 
 );
+-- ==========================================
+-- 席状態テーブル
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS seat_status (
+
+    seat_id INTEGER PRIMARY KEY,
+
+    store_id INTEGER NOT NULL,
+
+    occupied INTEGER NOT NULL,
+
+    seat_count INTEGER NOT NULL DEFAULT 0,
+
+    updated_at DATETIME NOT NULL
+        DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (store_id)
+        REFERENCES store(store_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+
+);
+
+-- ==========================================
+-- インデックス
+-- ==========================================
+
+CREATE INDEX IF NOT EXISTS idx_seat_status_store
+ON seat_status(store_id);
 
 -- ==========================================
 -- 検索高速化インデックス

@@ -123,7 +123,7 @@ def status():
         "is_stale": is_stale
     })
 
-#　カメラ2
+# カメラ2
 @app.route("/api/seats", methods=["POST"])
 def save_seats():
 
@@ -133,33 +133,65 @@ def save_seats():
         return jsonify({"error": "JSONデータがありません"}), 400
 
     if "store_id" not in data or "seats" not in data:
-        return jsonify({
-            "error": "store_id と seats が必要です"
-        }), 400
+        return jsonify({"error": "store_id と seats が必要です"}), 400
 
     store_id = data["store_id"]
     seats = data["seats"]
 
-    # 使用中の席数
-    occupied_count = sum(
-        1 for seat in seats
-        if seat.get("occupied", False)
-    )
-
-    # 空席数
-    remaining_seats = len(seats) - occupied_count
-
     conn = get_connection()
     cursor = conn.cursor()
 
+    # 各席の状態を更新
+    for seat in seats:
+
+        cursor.execute("""
+            INSERT INTO seat_status
+            (
+                seat_id,
+                store_id,
+                occupied,
+                seat_count,
+                updated_at
+            )
+            VALUES
+            (
+                ?, ?, ?, ?, CURRENT_TIMESTAMP
+            )
+
+            ON CONFLICT(seat_id)
+            DO UPDATE SET
+                occupied = excluded.occupied,
+                seat_count = excluded.seat_count,
+                updated_at = CURRENT_TIMESTAMP
+        """,
+        (
+            seat["seat_id"],
+            store_id,
+            int(seat["occupied"]),
+            seat["seat_count"]
+        ))
+
+    # 空席数を計算
+    cursor.execute("""
+        SELECT COUNT(*)
+        FROM seat_status
+        WHERE
+            store_id = ?
+        AND
+            occupied = 0
+    """, (store_id,))
+
+    remaining_seats = cursor.fetchone()[0]
+
+    # seat_logへ保存
     cursor.execute("""
         INSERT INTO seat_log
         (
             store_id,
             remaining_seats
         )
-        VALUES (?, ?)
-    """, (
+        VALUES(?, ?)""",
+    (
         store_id,
         remaining_seats
     ))
@@ -169,16 +201,13 @@ def save_seats():
 
     return jsonify({
         "message": "席情報を保存しました",
-        "store_id": store_id,
         "remaining_seats": remaining_seats
-    })
- 
+    }) 
  
 if __name__ == "__main__":
     print(app.url_map)
     app.run(
         host="0.0.0.0",
-        port=5000,
+        port=3000,
         debug=True
     )
-    
