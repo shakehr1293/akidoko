@@ -2,7 +2,7 @@ from flask import Flask, jsonify, request
 import sqlite3
 from pathlib import Path
 from flask_cors import CORS
- 
+
 app = Flask(__name__)
 CORS(app)
 app.json.ensure_ascii = False
@@ -10,15 +10,14 @@ app.json.ensure_ascii = False
 # データベースのパス
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR.parent / "database" / "restaurant.db"
- 
- 
+
+
 # DB接続
 def get_connection():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
- 
- 
+
 # 動作確認
 @app.route("/", methods=["GET"])
 def home():
@@ -75,8 +74,8 @@ def save_count():
         "store_id": store_id,
         "remaining_seats": remaining_seats
     })
- 
- 
+
+
 # 最新情報取得
 @app.route("/api/status", methods=["GET"])
 def status():
@@ -86,41 +85,104 @@ def status():
     conn = get_connection()
     cursor = conn.cursor()
 
+    # 店舗情報
     cursor.execute("""
         SELECT
-            s.store_name,
-            sl.remaining_seats,
-            sl.recorded_at
-        FROM store s
-        LEFT JOIN seat_log sl
-            ON s.store_id = sl.store_id
-        WHERE s.store_id = ?
-        ORDER BY sl.recorded_at DESC
+            store_name
+        FROM store
+        WHERE store_id = ?
+    """, (store_id,))
+
+    store = cursor.fetchone()
+
+    if store is None:
+        conn.close()
+        return jsonify({"error": "店舗が存在しません"}), 404
+
+    # カウンター席
+    cursor.execute("""
+    SELECT
+        occupied,
+        seat_count
+    FROM seat_status
+    WHERE
+        store_id = ?
+    AND
+        seat_id = 0
+    """, (store_id,))
+
+    counter = cursor.fetchone()
+
+    counter_total = 4
+
+    if counter:
+        counter_vacant = 4 - counter["seat_count"]
+    else:
+        counter_vacant = 4
+
+    # テーブル席
+    cursor.execute("""
+    SELECT
+        occupied
+    FROM seat_status
+    WHERE
+        store_id = ?
+    AND
+        seat_id IN (1,2)
+    ORDER BY seat_id
+    """, (store_id,))
+
+    tables = cursor.fetchall()
+
+    table_total = 2
+    table_vacant = 0
+
+    for table in tables:
+        if table["occupied"] == 0:
+            table_vacant += 1
+
+    # 最新の残席数
+    cursor.execute("""
+        SELECT
+            remaining_seats,
+            recorded_at
+        FROM seat_log
+        WHERE
+            store_id = ?
+        ORDER BY
+            recorded_at DESC
         LIMIT 1
     """, (store_id,))
 
-    status_info = cursor.fetchone()
+    seat_log = cursor.fetchone()
 
     conn.close()
 
-    if status_info is None:
-        return jsonify({"error": "店舗が存在しません"}), 404
-
-    if status_info["remaining_seats"] is None:
+    if seat_log is None:
         remaining_seats = 0
         updated_at = None
         is_stale = True
     else:
-        remaining_seats = status_info["remaining_seats"]
-        updated_at = status_info["recorded_at"]
+        remaining_seats = seat_log["remaining_seats"]
+        updated_at = seat_log["recorded_at"]
         is_stale = False
 
     return jsonify({
+
         "store_id": store_id,
-        "store_name": status_info["store_name"],
+
+        "counter_vacant": counter_vacant,
+        "counter_total": counter_total,
+
+        "table_vacant": table_vacant,
+        "table_total": table_total,
+
         "remaining_seats": remaining_seats,
+
         "updated_at": updated_at,
+
         "is_stale": is_stale
+
     })
 
 # カメラ2
@@ -172,16 +234,30 @@ def save_seats():
         ))
 
     # 空席数を計算
+    # 残席数を計算
     cursor.execute("""
-        SELECT COUNT(*)
+        SELECT
+            seat_id,
+            occupied,
+            seat_count
         FROM seat_status
-        WHERE
-            store_id = ?
-        AND
-            occupied = 0
+        WHERE store_id = ?
     """, (store_id,))
 
-    remaining_seats = cursor.fetchone()[0]
+    rows = cursor.fetchall()
+
+    remaining_seats = 0
+
+    for row in rows:
+
+        # seat_id=0：カウンター席（4席）
+        if row["seat_id"] == 0:
+            remaining_seats += max(0, 4 - row["seat_count"])
+
+        # seat_id=1,2：4人テーブル
+        else:
+            if row["occupied"] == 0:
+                remaining_seats += 4
 
     # seat_logへ保存
     cursor.execute("""
