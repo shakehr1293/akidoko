@@ -1,4 +1,4 @@
-const API_URL = 'http://10.77.99.164:3000/api/status';
+const API_URL = 'http://10.77.99.141:3000/api/status';
 
 // カウンター・テーブル共通の更新処理
 function updateSeatCard(id, vacant, total) {
@@ -6,7 +6,7 @@ function updateSeatCard(id, vacant, total) {
     const vacantEl = container.querySelector('.vacant-num');
     const totalEl = container.querySelector('.total-num');
 
-    vacantEl.innerText = (vacant === 0) ? '満席' : vacant;
+    vacantEl.innerText = (vacant === 0) ? '満' : vacant;
     totalEl.innerText = total;
 
     // 空き状況に応じて色分け
@@ -21,6 +21,7 @@ async function updateSeatStatus() {
     try {
         const response = await fetch(API_URL);
         const data = await response.json();
+        console.log(data);
 
         // 残席数を表示
         document.getElementById('remaining-seats').innerText = `${data.remaining_seats}席`;
@@ -55,5 +56,5 @@ async function updateSeatStatus() {
 
 window.onload = () => {
     updateSeatStatus();
-    setInterval(updateSeatStatus, 60000);
+    setInterval(updateSeatStatus, 20000);
 };
