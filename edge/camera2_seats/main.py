@@ -25,14 +25,14 @@ from collections import deque, Counter
 
 # ===== 設定 =====
 MODEL_PATH    = 'yolo26n.pt'    # YOLO モデル（初回実行時に自動ダウンロード）
-CAMERA_SOURCE = 2              # USB カメラのデバイス番号
+CAMERA_SOURCE = 6              # USB カメラのデバイス番号
 CONF          = 0.5           # person 検出の信頼度しきい値
 
 # 多数決による安定化（設計 3.3）
 VOTE_WINDOW   = 5             # 直近何フレーム分の判定を多数決に使うか
 
 # サーバ送信設定（別担当のサーバ /api/seats 実装後に URL を設定）
-SERVER_URL    = "http://10.77.99.164:3000/api/seats"
+SERVER_URL    = "http://10.77.99.141:3000/api/seats"
 STORE_ID      = 1
 POST_INTERVAL = 60           # 変化が無くても最低この秒数ごとに送る（鮮度維持。設計上は席状況15分で stale）
 STABLE_DELAY  = 5            # 状態がこの秒数だけ変化しなかったら「確定」と見なして送信する（デバウンス）
